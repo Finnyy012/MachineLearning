@@ -45,7 +45,9 @@ def visualise_perceptron(layer_in: np.array,
     :return: (graphviz.Digraph) graph object van perceptron
     """
 
-    res = graphviz.Digraph('perceptron')
+    res = graphviz.Digraph('perceptron', graph_attr={'splines': 'line', 'rankdir': 'LR', 'layout' : 'dot'})
+    res.format = 'bmp'
+
     node_id = 0
     buffer = len(layer_in)
 
@@ -75,9 +77,6 @@ def visualise_perceptron(layer_in: np.array,
                     label = 'output'
                 res.edge(str(node_id), str(-j-1), label=label)
             node_id += 1
-
-    res.graph_attr['rankdir'] = 'LR'
-    res.format = 'bmp'
 
     return res
 
