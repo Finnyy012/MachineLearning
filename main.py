@@ -10,10 +10,10 @@ def demo1():
     demo voor P1
     """
     weights = []
-    thresholds = []
+    biases = []
 
     #verander deze voor andere input
-    I = np.array([1,1])
+    I = np.array([1,0])
 
     weights.append(np.array([[ 1, 1],
                              [ 1, 1],
@@ -21,12 +21,12 @@ def demo1():
     weights.append(np.array([[1,0,0],
                              [0,1,1]]))
 
-    thresholds.append(np.array([2,1,-1]))
-    thresholds.append(np.array([1,2]))
+    biases.append(np.array([-2,-1, 1]))
+    biases.append(np.array([-1,-2]))
 
     netw = Netwerk(0, 0, 0, 0, ActivatieFuncties.STEP)
     netw._weights = weights
-    netw._thresholds = thresholds
+    netw._biases = biases
 
     res = netw.evaluate(I)
     print("in: " + str(I))
@@ -35,8 +35,8 @@ def demo1():
     for m in weights:
         print(m)
 
-    print("\nthresholds: ")
-    for v in thresholds:
+    print("\nbiases: ")
+    for v in biases:
         print(v)
 
     print("\nout: " + str(res))
@@ -48,23 +48,49 @@ def demo1():
     g1.render(directory='graphviz_renders', view=True)
 
 
-def main():
-    netw = Netwerk(3, 3, 2, 2, ActivatieFuncties.SIGMOID)
+def demo2():
+    """
+    demo voor P2
+    """
+    netw = Netwerk(0, 0, 0, 0, ActivatieFuncties.STEP, .8)
 
-    print("\nweight:")
+    netw._weights = [np.array([[-0.5, 0.5]])]
+    netw._biases = [np.array([1.5])]
+
+    x_and = np.array([[1, 1],
+                      [1, 0],
+                      [0, 1],
+                      [0, 0]])
+    d_and = np.array([1, 0, 0, 0])
+
+    print("\ninitial")
+    print("weights:")
     for w in netw._weights:
         print(w)
-
-    print("\nthreshold:")
-    for t in netw._thresholds:
+    print("biases:")
+    for t in netw._biases:
         print(t)
 
+    for i in range(11):
+        netw.update_trivial(x_and, d_and)
+        print("\nupdate " + str(i) + ": ")
+        print("weights:")
+        for w in netw._weights:
+            print(w)
+        print("biases:")
+        for t in netw._biases:
+            print(t)
+
     g1 = netw.visualise_network(np.array(['x1', 'x2']), mindiam=2.5, minlen=10)
-    g2 = netw.visualise_network(np.array([1,0]), mindiam=2.5, minlen=10, evaluate=True)
+    g2 = netw.visualise_network(np.array([1, 0]), mindiam=2.5, minlen=10, evaluate=True)
     g2.render(directory='graphviz_renders', view=True)
 
 
+def main():
+    pass
+
 if __name__ == '__main__':
-    demo1()
+    # demo1()
+    demo2()
     # main()
 
