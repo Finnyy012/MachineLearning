@@ -57,18 +57,18 @@ def visualise_perceptron(layer_in: np.array,
         result = [" " for _ in range(len(thresholds[len(thresholds)-1]))]
 
     for i, n in enumerate(layer_in):
-        res.node(str(node_id), str(n), shape = 'circle', fontname = 'Consolas')
+        res.node(str(node_id), str(n), shape = 'circle', fontname = 'Consolas', width='.8')
         for j in range(len(weights[0])):
-            res.edge(str(node_id), str(buffer + j), label=str(weights[0][j][i]))
+            res.edge(str(node_id), str(buffer + j), taillabel=" "+str(weights[0][j][i]), minlen='2')
         node_id += 1
 
     for i, v in enumerate(thresholds):
         buffer += len(v)
         for j, t in enumerate(v):
-            res.node(str(node_id), str(t), shape='circle', fontname='Consolas')
+            res.node(str(node_id), str(t), shape='circle', fontname='Consolas', width='.8')
             if i < len(thresholds)-1:
                 for k in range(len(weights[i+1])):
-                    res.edge(str(node_id), str(buffer + k), label=str(weights[i+1][k][j]))
+                    res.edge(str(node_id), str(buffer + k), taillabel=" "+str(weights[i+1][k][j]), minlen='2')
             else:
                 res.node(str(-j-1), str(result[j]), shape='none')
                 if out_labels is not None:
