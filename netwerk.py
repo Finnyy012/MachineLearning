@@ -77,7 +77,8 @@ class Netwerk:
                           out_labels: [str] = None,
                           evaluate: bool = False,
                           mindiam: float = .8,
-                          minlen: float = 2) -> graphviz.Digraph:
+                          minlen: float = 2,
+                          titel: str = "") -> graphviz.Digraph:
         """
         visualiseert het netwerk
 
@@ -86,10 +87,11 @@ class Netwerk:
         :param evaluate: (bool) evalueert de perceptron aan de hand van layer_in - default = False
         :param minlen: (float) minimum pijl lengte (zet op minstens 10 voor gegenereerde netwerken)
         :param mindiam: (float) minimum node diameter
+        :param titel: (str) afbeeldingstitel
         :return: (graphviz.Digraph) graph object van perceptron
         """
 
-        res = graphviz.Digraph('perceptron', graph_attr={'splines': 'line', 'rankdir': 'LR', 'layout': 'dot'})
+        res = graphviz.Digraph('netwerk', graph_attr={'splines': 'line', 'rankdir': 'LR', 'layout': 'dot', 'label' : titel})
         res.format = 'bmp'
 
         node_id = 0

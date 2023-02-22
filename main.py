@@ -3,6 +3,8 @@ import numpy as np
 import graphviz
 from netwerk import Netwerk
 from activatie_functies import ActivatieFuncties
+from sklearn.datasets import load_iris
+import pandas as pd
 
 
 def demo1():
@@ -42,16 +44,17 @@ def demo1():
     print("\nout: " + str(res))
 
     g1 = netw.visualise_network(np.array(['x1', 'x2']), out_labels=['sum', 'carry'])
-    g2 = netw.visualise_network(I, out_labels=['carry', 'sum'], evaluate=True)
+    g2 = netw.visualise_network(I, out_labels=['sum', 'carry'], evaluate=True)
 
     #g1 voor generic perceptron en g2 voor perceptron met input I
-    g1.render(directory='graphviz_renders', view=True)
+    g2.render(directory='graphviz_renders', view=True)
 
 
 def demo2():
     """
     demo voor P2
     """
+    np.random.seed(1)
     netw = Netwerk(0, 0, 0, 0, ActivatieFuncties.STEP, .8)
 
     netw._weights = [np.array([[-0.5, 0.5]])]
@@ -85,12 +88,23 @@ def demo2():
     g2 = netw.visualise_network(np.array([1, 0]), mindiam=2.5, minlen=10, evaluate=True)
     g2.render(directory='graphviz_renders', view=True)
 
+    X_iris, y_iris = load_iris()
 
-def main():
+
+def demo3():
     pass
 
+
+def main():
+    data_iris = (load_iris())
+    iris = load_iris()
+    X = iris.data[:, :2]
+    y = iris.target
+    print(data_iris)
+
+
 if __name__ == '__main__':
-    # demo1()
-    demo2()
+    demo1()
+    # demo2()
     # main()
 
