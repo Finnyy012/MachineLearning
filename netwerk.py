@@ -1,3 +1,4 @@
+import activatie_functies
 from activatie_functies import ActivatieFuncties
 import numpy as np
 import graphviz
@@ -23,18 +24,13 @@ class Netwerk:
         self.f_act = f_act
         self.l_rate = l_rate
         self._weights = []
-        self._biases = []
 
         if n_layers == 0:
-            self._weights.append(np.random.normal(size=(out_size, in_size)))
-            self._biases.append(np.random.normal(size=out_size))
+            self._weights.append(np.random.normal(size=(out_size, in_size+1)))
         else:
-            self._weights.append(np.random.normal(size=(layer_size, in_size)))
-            self._weights.extend([np.random.normal(size=(layer_size, layer_size)) for _ in range(n_layers - 1)])
-            self._weights.append(np.random.normal(size=(out_size, layer_size)))
-
-            self._biases.extend([np.random.normal(size=layer_size) for _ in range(n_layers)])
-            self._biases.append(np.random.normal(size=out_size))
+            self._weights.append(np.random.normal(size=(layer_size, in_size+1)))
+            self._weights.extend([np.random.normal(size=(layer_size, layer_size+1)) for _ in range(n_layers - 1)])
+            self._weights.append(np.random.normal(size=(out_size, layer_size+1)))
 
     def evaluate(self, layer_in: np.array) -> np.array:
         """
@@ -43,34 +39,45 @@ class Netwerk:
         door de activatiefunctie om een output te krijgen, wat dus weer de input wordt voor de volgende layer.
 
         een half-adder met input [ 1  0] en de step-activatiefunctie bijvoorbeeld werkt als volgt:
-        (In = input layer n, Wn = weight layer n, Tn = threshold layer n)
 
-             layer 0 → 1                                   |   layer 1 → 2
-           ------------------------------------------------|-----------------------------------------------------
-            I0 → [ 1  0]              T0                   |  I1 →  [ 0  1  1]            T1
-                    •                  ↓                   |            •                  ↓
-            W0 → [[ 1  1]     [ 1    [ 2         [-1       |  W1 → [[ 1  0  0]    [ 0    [ 1         [-1    [ 0
-                  [ 1  1]  →    1  -   1  → STEP   0  = I1 |        [ 0  1  1]] →   2] -   2] → STEP   0] =   1]
-                  [-1 -1]]     -1]    -1]          0]      |
+             layer 0 → 1                                 |   layer 1 → 2
+           ----------------------------------------------|-----------------------------------------------------
+            I0|1  →  [ 1  0  1]                          |  I1|1  →  [ 0  1  1  1]
+                         •                               |                 •
+            W0|B0 → [[ 1  1 -2]         [-1    [ 0       |  W1|B1 → [[ 1  0  0 -1]         [-1    [ 0
+                     [ 1  1 -1]  → STEP   0  =   1  = I1 |           [ 0  1  1 -2]] → STEP   0] =   1]
+                     [-1 -1  1]]          0]     1]      |
+
+         - In = input layer n
+         - Wn = weight layer n
+         - Bn = bias layer n
+         - | is een concatenatie dus bijv. W0|B0 is matrix W0 met vector B0 eraan vastgeplakt
 
         :param layer_in: (np.array) array met input (dus layer 0)
         :return: (np.array) array met output
         """
-        for m, b in zip(self._weights, self._biases):
-            layer_in = self.f_act(np.matmul(m, layer_in) + b)
+        for m in self._weights:
+            layer_in = self.f_act(np.matmul(m, np.append(layer_in, 1)))
         return layer_in
 
-    def update_trivial(self, x: np.array, target: np.array):
+    def update_trivial(self, x: np.array, target: np.array) -> None:
         """
-        function for training a network with no hidden layers
+        simple function for training a network with no hidden layers
 
         :param x: matrix with input values
         :param target: array with target values
         """
         for i, row in enumerate(x):
             d = self.l_rate*(target[i] - self.evaluate(row))
-            self._weights = self._weights + row*d
-            self._biases = self._biases + d
+            self._weights = self._weights + np.append(row, 1)*d
+
+    def f_act_to_char(self) -> chr:
+        """
+        tostring voor activatiefunctie
+        :return: (chr) karakter representatie van activatiefunctie
+        """
+        if self.f_act == ActivatieFuncties.SIGMOID: return 'σ'
+        if self.f_act == ActivatieFuncties.STEP: return 'H'
 
     def visualise_network(self,
                           layer_in: np.array,
@@ -78,43 +85,60 @@ class Netwerk:
                           evaluate: bool = False,
                           mindiam: float = .8,
                           minlen: float = 2,
-                          titel: str = "") -> graphviz.Digraph:
+                          titel: str = "",
+                          filename: str = "netwerk") -> graphviz.Digraph:
         """
         visualiseert het netwerk
 
         :param layer_in: (np.array) array met input; als evaluate = False kunnen hier de labels van de input-variabelen in
         :param out_labels: ([str]) list met labels voor de output; None voor geen label - default = None
         :param evaluate: (bool) evalueert de perceptron aan de hand van layer_in - default = False
-        :param minlen: (float) minimum pijl lengte (zet op minstens 10 voor gegenereerde netwerken)
-        :param mindiam: (float) minimum node diameter
-        :param titel: (str) afbeeldingstitel
+        :param mindiam: (float) minimum node diameter - default = .8
+        :param minlen: (float) minimum pijl lengte (zet op minstens 10 voor gegenereerde netwerken) - default = 2
+        :param titel: (str) afbeeldingstitel - default = ""
+        :param filename: (str) bestandsnaam - default = "netwerk"
+
         :return: (graphviz.Digraph) graph object van perceptron
         """
 
-        res = graphviz.Digraph('netwerk', graph_attr={'splines': 'line', 'rankdir': 'LR', 'layout': 'dot', 'label' : titel})
+        res = graphviz.Digraph(filename,
+                               graph_attr={'splines'  : 'line',
+                                           'rankdir'  : 'LR',
+                                           'layout'   : 'dot',
+                                           'ordering' : 'in',
+                                           'label'    : titel})
         res.format = 'bmp'
-
-        node_id = 0
-        buffer = len(layer_in)
+        node_kwargs = {'shape'   : 'circle',
+                       'fontname': 'Consolas',
+                       'width'   : str(mindiam)}
 
         if evaluate:
             result = self.evaluate(layer_in)
         else:
-            result = [" " for _ in range(len(self._biases[len(self._biases) - 1]))]
+            result = [" " for _ in range(self._weights[len(self._weights) - 1].shape[0])]
+
+        layer_in = np.append(layer_in, 1)
+        buffer = layer_in.shape[0]
+        node_id = 0
 
         for i, n in enumerate(layer_in):
-            res.node(str(node_id), str(n), shape='circle', fontname='Consolas', width=str(mindiam))
-            for j in range(len(self._weights[0])):
-                res.edge(str(node_id), str(buffer + j), taillabel=" " + str(self._weights[0][j][i]), minlen=str(minlen))
+            res.node(str(node_id), str(n), **node_kwargs)
+            for j in range(self._weights[0].shape[0]):
+                res.edge(str(node_id),
+                         str(buffer + j),
+                         taillabel=" " + str(self._weights[0][j][i]),
+                         minlen=str(minlen))
             node_id += 1
 
-        for i, v in enumerate(self._biases):
-            buffer += len(v)
-            for j, t in enumerate(v):
-                res.node(str(node_id), str(t), shape='circle', fontname='Consolas', width=str(mindiam))
-                if i < len(self._biases) - 1:
-                    for k in range(len(self._weights[i + 1])):
-                        res.edge(str(node_id), str(buffer + k), taillabel=" " + str(self._weights[i + 1][k][j]),
+        for i, m in enumerate(self._weights):
+            buffer += (m.shape[0] + 1)
+            for j, node in enumerate(m):
+                res.node(str(node_id), self.f_act_to_char(), **node_kwargs)
+                if i < len(self._weights) - 1:
+                    for k in range(self._weights[i + 1].shape[0]):
+                        res.edge(str(node_id),
+                                 str(buffer + k),
+                                 taillabel=" " + str(self._weights[i + 1][k][j]),
                                  minlen=str(minlen))
                 else:
                     res.node(str(-j - 1), str(result[j]), shape='none')
@@ -123,6 +147,14 @@ class Netwerk:
                     else:
                         label = 'output'
                     res.edge(str(node_id), str(-j - 1), label=label)
+                node_id += 1
+            if i < len(self._weights) - 1:
+                res.node(str(node_id), '1', **node_kwargs)
+                for k in range(len(self._weights[i + 1])):
+                    res.edge(str(node_id),
+                             str(buffer + k),
+                             taillabel=" " + str(self._weights[i + 1][k][buffer-4]),
+                             minlen=str(minlen))
                 node_id += 1
 
         return res

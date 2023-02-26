@@ -15,20 +15,20 @@ def demo1():
     biases = []
 
     #verander deze voor andere input
-    I = np.array([1,0])
+    I = np.array([1,1])
 
-    weights.append(np.array([[ 1, 1],
-                             [ 1, 1],
-                             [-1,-1]]))
-    weights.append(np.array([[1,0,0],
-                             [0,1,1]]))
+    weights.append(np.array([[ 1, 1,-2],
+                             [ 1, 1,-1],
+                             [-1,-1, 1]]))
+    weights.append(np.array([[ 1, 0, 0,-1],
+                             [ 0, 1, 1,-2]]))
 
-    biases.append(np.array([-2,-1, 1]))
-    biases.append(np.array([-1,-2]))
+    # biases.append(np.array([-2,-1, 1]))
+    # biases.append(np.array([-1,-2]))
 
     netw = Netwerk(0, 0, 0, 0, ActivatieFuncties.STEP)
     netw._weights = weights
-    netw._biases = biases
+    # netw._biases = biases
 
     res = netw.evaluate(I)
     print("in: " + str(I))
@@ -36,18 +36,13 @@ def demo1():
     print("\nweights: ")
     for m in weights:
         print(m)
-
-    print("\nbiases: ")
-    for v in biases:
-        print(v)
-
     print("\nout: " + str(res))
 
     g1 = netw.visualise_network(np.array(['x1', 'x2']), out_labels=['sum', 'carry'])
-    g2 = netw.visualise_network(I, out_labels=['sum', 'carry'], evaluate=True)
+    g2 = netw.visualise_network(np.array([1, 1]), out_labels=['sum', 'carry'], evaluate=True)
 
     #g1 voor generic perceptron en g2 voor perceptron met input I
-    g2.render(directory='graphviz_renders', view=True)
+    g1.render(directory='graphviz_renders', view=True)
 
 
 def demo2():
@@ -58,13 +53,13 @@ def demo2():
     netw = Netwerk(0, 0, 0, 0, ActivatieFuncties.STEP, .8)
 
     netw._weights = [np.array([[-0.5, 0.5]])]
-    netw._biases = [np.array([1.5])]
+    netw._biases = [np.array([-1.5])]
 
     x_and = np.array([[1, 1],
                       [1, 0],
                       [0, 1],
                       [0, 0]])
-    d_and = np.array([1, 0, 0, 0])
+    d_and = np.array([[1], [0], [0], [0]])
 
     print("\ninitial")
     print("weights:")
@@ -88,7 +83,7 @@ def demo2():
     g2 = netw.visualise_network(np.array([1, 0]), mindiam=2.5, minlen=10, evaluate=True)
     g2.render(directory='graphviz_renders', view=True)
 
-    X_iris, y_iris = load_iris()
+    # X_iris, y_iris = load_iris()
 
 
 def demo3():
@@ -96,15 +91,39 @@ def demo3():
 
 
 def main():
-    data_iris = (load_iris())
-    iris = load_iris()
-    X = iris.data[:, :2]
-    y = iris.target
-    print(data_iris)
+    # data_iris = (load_iris())
+    # iris = load_iris()
+    # X = iris.data[:, :2]
+    # y = iris.target
+    # print(data_iris)
+    ma = np.array([[1,0],
+              [2,3]])
+    mb = np.array([[1, 1],
+              [2, 1.5]])
+    va = np.array([1,2])
+    print(ma * mb)
+    print(ma - va)
+
+    np.random.seed(1)
+    netw = Netwerk(0, 0, 0, 0, ActivatieFuncties.STEP, .8)
+
+    netw._weights = [np.array([[-0.5, 0.5]])]
+    netw._biases = [np.array([-1.5])]
+
+    x_and = np.array([[1, 1],
+                      [1, 0],
+                      [0, 1],
+                      [0, 0]])
+    d_and = np.array([1, 0, 0, 0])
+
+    print(netw.evaluate(x_and.transpose()))
+
+
 
 
 if __name__ == '__main__':
     demo1()
     # demo2()
     # main()
+    # print(np.append(np.zeros(3), 1))
 
