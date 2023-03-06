@@ -38,6 +38,8 @@ class Netwerk:
         de functie multipliceert voor elke layer de input met de weights, telt hier de biases bij op en knalt dit
         door de activatiefunctie om een output te krijgen, wat dus weer de input wordt voor de volgende layer.
 
+        de functie werkt ook met matrices als input, voor als je meerdere inputs tegelijk wilt evalueren
+
         een half-adder met input [ 1  0] en de step-activatiefunctie bijvoorbeeld werkt als volgt:
 
              layer 0 → 1                                 |   layer 1 → 2
@@ -56,8 +58,11 @@ class Netwerk:
         :param layer_in: (np.array) array met input (dus layer 0)
         :return: (np.array) array met output
         """
+        if len(layer_in.shape) == 1:
+            layer_in = np.array([layer_in])
+
         for m in self._weights:
-            layer_in = self.f_act(np.matmul(m, np.append(layer_in, 1)))
+            layer_in = self.f_act(np.matmul(np.c_[layer_in, np.ones(layer_in.shape[0])], m.T))
         return layer_in
 
     def update_trivial(self, x: np.array, target: np.array, do_print=False) -> None:
@@ -83,9 +88,11 @@ class Netwerk:
             self._weights = self._weights + np.outer(d, np.append(row, 1))
 
     def loss_MSE(self, x: np.array, target: np.array):
-        # TODO
-        pass
-
+        res = 0
+        for i, row in enumerate(x):
+            res += (target[i] - self.evaluate(row))
+        res = res/x.shape[0]
+        return res
 
     def f_act_to_char(self) -> chr:
         """
@@ -129,7 +136,7 @@ class Netwerk:
                        'width'   : str(mindiam)}
 
         if evaluate:
-            result = self.evaluate(layer_in)
+            result = self.evaluate(layer_in)[0]
         else:
             result = [" " for _ in range(self._weights[len(self._weights) - 1].shape[0])]
 
