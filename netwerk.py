@@ -79,20 +79,15 @@ class Netwerk:
         """
         for i, row in enumerate(x):
             d = self.l_rate*(target[i] - self.evaluate(row))
-            if do_print:
-                print("\nΔ         = " + str(d))
-                print("in        = "   + str(row))
-                print("Δ * in    = \n" + str(np.outer(d, np.append(row, 1))))
-                print("updated W = \n" + str(self._weights))
-
             self._weights = self._weights + np.outer(d, np.append(row, 1))
+            if do_print:
+                print("Δ ⊗ in    = \n" + str(np.outer(d, np.append(row, 1))))
+                print("updated W = \n" + str(self._weights))
+                print("MSE       = " + str(self.loss_MSE(x, target)) + "\n")
 
     def loss_MSE(self, x: np.array, target: np.array):
-        res = 0
-        for i, row in enumerate(x):
-            res += (target[i] - self.evaluate(row))
-        res = res/x.shape[0]
-        return res
+        if len(x.shape)==1: target = np.reshape(target,(-1,1))
+        return np.mean((target - self.evaluate(x))**2, axis=0)
 
     def f_act_to_char(self) -> chr:
         """

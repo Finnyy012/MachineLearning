@@ -76,23 +76,21 @@ def demo2():
 
 
 def main():
-    np.random.seed(1)
-    netw = Netwerk(0, 0, 0, 0, ActivatieFuncties.STEP, .8)
+    np.random.seed(1819772)
+    netw = Netwerk(0, 0, 4, 1, ActivatieFuncties.STEP, .8)
 
-    netw._weights = [np.array([[-0.5, 0.5, -1.5],
-                               [-0.5, 0.5, -1.5]])]
+    iris = load_iris()
+    X = iris.data[:100]
+    y = np.reshape(iris.target[:100],(-1,1))
 
-    x_and = np.array([[1, 1],
-                      [1, 0],
-                      [0, 1],
-                      [0, 0]])
-    d_and = np.array([[1, 1], [0, 0], [0, 0], [0, 0]])
-
-    print(netw.evaluate(x_and))
+    for i in range(10):
+        netw.update_trivial(X, y, False)
+        print(netw._weights)
+        print(netw.loss_MSE(X, y))
 
 
 if __name__ == '__main__':
     # demo1()
-    demo2()
-    # main()
+    # demo2()
+    main()
 
