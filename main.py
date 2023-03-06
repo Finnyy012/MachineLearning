@@ -52,36 +52,32 @@ def demo2():
     np.random.seed(1)
     netw = Netwerk(0, 0, 0, 0, ActivatieFuncties.STEP, .8)
 
-    netw._weights = [np.array([[-0.5, 0.5]])]
-    netw._biases = [np.array([-1.5])]
+    netw._weights = [np.array([[-0.5, 0.5, -1.5],
+                               [-0.5, 0.5, -1.5]])]
+
+    g1 = netw.visualise_network(np.array(['x1', 'x2']), mindiam=2.5, minlen=10)
+    # g2 = netw.visualise_network(np.array([1, 0]), mindiam=2.5, minlen=10, evaluate=True)
+    g1.render(directory='graphviz_renders', view=True)
 
     x_and = np.array([[1, 1],
                       [1, 0],
                       [0, 1],
                       [0, 0]])
-    d_and = np.array([[1], [0], [0], [0]])
+    d_and = np.array([[1, 1], [0, 0], [0, 0], [0, 0]])
 
-    print("\ninitial")
-    print("weights:")
+    print("\ninitial weights:")
     for w in netw._weights:
         print(w)
-    print("biases:")
-    for t in netw._biases:
-        print(t)
 
-    for i in range(11):
-        netw.update_trivial(x_and, d_and)
-        print("\nupdate " + str(i) + ": ")
-        print("weights:")
+    for i in range(4):
+        netw.update_trivial(x_and, d_and, True)
+        print("\nupdate " + str(i) + " weights: ")
         for w in netw._weights:
             print(w)
-        print("biases:")
-        for t in netw._biases:
-            print(t)
 
     g1 = netw.visualise_network(np.array(['x1', 'x2']), mindiam=2.5, minlen=10)
-    g2 = netw.visualise_network(np.array([1, 0]), mindiam=2.5, minlen=10, evaluate=True)
-    g2.render(directory='graphviz_renders', view=True)
+    # g2 = netw.visualise_network(np.array([1, 0]), mindiam=2.5, minlen=10, evaluate=True)
+    g1.render(directory='graphviz_renders', view=True)
 
     # X_iris, y_iris = load_iris()
 
@@ -122,8 +118,8 @@ def main():
 
 
 if __name__ == '__main__':
-    demo1()
-    # demo2()
+    # demo1()
+    demo2()
     # main()
     # print(np.append(np.zeros(3), 1))
 

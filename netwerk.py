@@ -60,16 +60,32 @@ class Netwerk:
             layer_in = self.f_act(np.matmul(m, np.append(layer_in, 1)))
         return layer_in
 
-    def update_trivial(self, x: np.array, target: np.array) -> None:
+    def update_trivial(self, x: np.array, target: np.array, do_print=False) -> None:
         """
-        simple function for training a network with no hidden layers
+        functie die een netwerk met maar één laag updated
 
-        :param x: matrix with input values
-        :param target: array with target values
+        de functie loopt door de features heen en updated de weights door er
+         η • (target[i] – evaluate(x[i])) ⊗ (x[i]|1)
+        bij op te tellen
+
+        :param x: matrix met input values
+        :param target: array met target values
+        :param do_print: print weights etc. tussen elke stap wanneer True
         """
         for i, row in enumerate(x):
             d = self.l_rate*(target[i] - self.evaluate(row))
-            self._weights = self._weights + np.append(row, 1)*d
+            if do_print:
+                print("\nΔ         = " + str(d))
+                print("in        = "   + str(row))
+                print("Δ * in    = \n" + str(np.outer(d, np.append(row, 1))))
+                print("updated W = \n" + str(self._weights))
+
+            self._weights = self._weights + np.outer(d, np.append(row, 1))
+
+    def loss_MSE(self, x: np.array, target: np.array):
+        # TODO
+        pass
+
 
     def f_act_to_char(self) -> chr:
         """
