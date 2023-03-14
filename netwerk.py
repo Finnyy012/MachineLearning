@@ -1,5 +1,5 @@
 import activatie_functies
-from activatie_functies import ActivatieFuncties
+from activatie_functies import ActivatieFunctie
 import numpy as np
 import graphviz
 
@@ -10,7 +10,7 @@ class Netwerk:
                  layer_size: int,
                  in_size: int,
                  out_size: int,
-                 f_act: ActivatieFuncties,
+                 f_act: ActivatieFunctie,
                  l_rate: float = .1) -> None:
         """
         initialiseert het netwerk met normaal-verdeelde, willekeurig-gegenereerde floats voor weights en biases.
@@ -21,16 +21,18 @@ class Netwerk:
         :param out_size: (int) output layer lengte
         :param f_act: (ActivatieFuncties) activatiefunctie
         """
-        self.f_act = f_act
+        self.f_act = f_act.function
+        self.f_drv = f_act.derivative
+        self.f_str = f_act.toChar()
         self.l_rate = l_rate
         self._weights = []
 
         if n_layers == 0:
-            self._weights.append(np.random.normal(size=(out_size, in_size+1)))
+            self._weights.append(np.random.normal(size=(in_size+1, out_size)))
         else:
-            self._weights.append(np.random.normal(size=(layer_size, in_size+1)))
-            self._weights.extend([np.random.normal(size=(layer_size, layer_size+1)) for _ in range(n_layers - 1)])
-            self._weights.append(np.random.normal(size=(out_size, layer_size+1)))
+            self._weights.append(np.random.normal(size=(in_size+1, out_size)))
+            self._weights.extend([np.random.normal(size=(layer_size+1, layer_size)) for _ in range(n_layers - 1)])
+            self._weights.append(np.random.normal(size=(layer_size+1, out_size)))
 
     def evaluate(self, layer_in: np.array) -> np.array:
         """
@@ -62,8 +64,15 @@ class Netwerk:
             layer_in = np.array([layer_in])
 
         for m in self._weights:
-            layer_in = self.f_act(np.matmul(np.c_[layer_in, np.ones(layer_in.shape[0])], m.T))
+            # print(np.c_[layer_in, np.ones(layer_in.shape[0])])
+            # print(m)
+            layer_in = self.f_act(np.matmul(np.c_[layer_in, np.ones(layer_in.shape[0])], m))
         return layer_in
+
+    def loss_MSE(self, x: np.array, target: np.array):
+        if len(target.shape) == 1:
+            target = np.array([target])
+        return np.mean((target - self.evaluate(x))**2, axis=0)
 
     def update_trivial(self, x: np.array, target: np.array, do_print=False) -> None:
         """
@@ -79,23 +88,36 @@ class Netwerk:
         """
         for i, row in enumerate(x):
             d = self.l_rate*(target[i] - self.evaluate(row))
-            self._weights = self._weights + np.outer(d, np.append(row, 1))
+
+            self._weights[0] = self._weights[0] + np.outer(np.append(row, 1), d)
             if do_print:
                 print("Δ ⊗ in    = \n" + str(np.outer(d, np.append(row, 1))))
                 print("updated W = \n" + str(self._weights))
                 print("MSE       = " + str(self.loss_MSE(x, target)) + "\n")
 
-    def loss_MSE(self, x: np.array, target: np.array):
-        if len(x.shape)==1: target = np.reshape(target,(-1,1))
-        return np.mean((target - self.evaluate(x))**2, axis=0)
+    def update_backprop(self, x: np.array, target: np.array) -> None:
+        for i, xr in enumerate(x):
+            z = []
+            layer_in = xr
+            if len(layer_in.shape) == 1:
+                layer_in = np.array([layer_in])
+            for m in self._weights:
+                # print(np.c_[layer_in, np.ones(layer_in.shape[0])])
+                # print(m.T)
+                z_curr = np.matmul(np.c_[layer_in, np.ones(layer_in.shape[0])], m.T)
+                z.append(z_curr)
+                layer_in = self.f_act(z_curr)
 
-    def f_act_to_char(self) -> chr:
-        """
-        tostring voor activatiefunctie
-        :return: (chr) karakter representatie van activatiefunctie
-        """
-        if self.f_act == ActivatieFuncties.SIGMOID: return 'σ'
-        if self.f_act == ActivatieFuncties.STEP: return 'H'
+            bigd = self.f_drv(z[len(z)-1]) * 2 * (self.f_act(z[len(z)-1]) - target)
+            outi = self.f_act(z[len(z)-2])
+
+            # print(self._weights[len(self._weights)-1])
+            print("\nd: ")
+            print(bigd)
+            print(outi)
+            print(np.append(bigd, 1))
+            print(np.matmul(np.append(bigd, 1), outi))
+
 
     def visualise_network(self,
                           layer_in: np.array,
@@ -131,9 +153,9 @@ class Netwerk:
                        'width'   : str(mindiam)}
 
         if evaluate:
-            result = self.evaluate(layer_in)[0]
+            result = self.evaluate(layer_in)
         else:
-            result = [" " for _ in range(self._weights[len(self._weights) - 1].shape[0])]
+            result = [[" " for _ in range(self._weights[len(self._weights) - 1].T.shape[0])]]
 
         layer_in = np.append(layer_in, 1)
         buffer = layer_in.shape[0]
@@ -141,25 +163,25 @@ class Netwerk:
 
         for i, n in enumerate(layer_in):
             res.node(str(node_id), str(n), **node_kwargs)
-            for j in range(self._weights[0].shape[0]):
+            for j in range(self._weights[0].T.shape[0]):
                 res.edge(str(node_id),
                          str(buffer + j),
-                         taillabel=" " + str(self._weights[0][j][i]),
+                         taillabel=" " + str(self._weights[0].T[j][i]),
                          minlen=str(minlen))
             node_id += 1
 
         for i, m in enumerate(self._weights):
-            buffer += (m.shape[0] + 1)
-            for j, node in enumerate(m):
-                res.node(str(node_id), self.f_act_to_char(), **node_kwargs)
+            buffer += (m.T.shape[0] + 1)
+            for j, node in enumerate(m.T):
+                res.node(str(node_id), self.f_str, **node_kwargs)
                 if i < len(self._weights) - 1:
-                    for k in range(self._weights[i + 1].shape[0]):
+                    for k in range(self._weights[i + 1].T.shape[0]):
                         res.edge(str(node_id),
                                  str(buffer + k),
-                                 taillabel=" " + str(self._weights[i + 1][k][j]),
+                                 taillabel=" " + str(self._weights[i + 1].T[k][j]),
                                  minlen=str(minlen))
                 else:
-                    res.node(str(-j - 1), str(result[j]), shape='none')
+                    res.node(str(-j - 1), str(result[0][j]), shape='none')
                     if out_labels is not None:
                         label = out_labels.pop()
                     else:
@@ -168,10 +190,10 @@ class Netwerk:
                 node_id += 1
             if i < len(self._weights) - 1:
                 res.node(str(node_id), '1', **node_kwargs)
-                for k in range(len(self._weights[i + 1])):
+                for k in range(len(self._weights[i + 1].T)):
                     res.edge(str(node_id),
                              str(buffer + k),
-                             taillabel=" " + str(self._weights[i + 1][k][buffer-4]),
+                             taillabel=" " + str(self._weights[i + 1].T[k][buffer-4]),
                              minlen=str(minlen))
                 node_id += 1
 
