@@ -1,4 +1,3 @@
-import activatie_functies
 from activatie_functies import ActivatieFunctie
 import numpy as np
 import graphviz
@@ -30,7 +29,7 @@ class Netwerk:
         if n_layers == 0:
             self._weights.append(np.random.normal(size=(in_size+1, out_size)))
         else:
-            self._weights.append(np.random.normal(size=(in_size+1, out_size)))
+            self._weights.append(np.random.normal(size=(in_size+1, layer_size)))
             self._weights.extend([np.random.normal(size=(layer_size+1, layer_size)) for _ in range(n_layers - 1)])
             self._weights.append(np.random.normal(size=(layer_size+1, out_size)))
 
@@ -43,6 +42,8 @@ class Netwerk:
         de functie werkt ook met matrices als input, voor als je meerdere inputs tegelijk wilt evalueren
 
         een half-adder met input [ 1  0] en de step-activatiefunctie bijvoorbeeld werkt als volgt:
+        (de matrices hieronder zijn getransponeerd t.o.v. de daadwerkelijke werking om de matrix-vector multiplicatie
+        duidelijker te weergeven)
 
              layer 0 → 1                                 |   layer 1 → 2
            ----------------------------------------------|-----------------------------------------------------
@@ -64,8 +65,6 @@ class Netwerk:
             layer_in = np.array([layer_in])
 
         for m in self._weights:
-            # print(np.c_[layer_in, np.ones(layer_in.shape[0])])
-            # print(m)
             layer_in = self.f_act(np.matmul(np.c_[layer_in, np.ones(layer_in.shape[0])], m))
         return layer_in
 
@@ -96,28 +95,28 @@ class Netwerk:
                 print("MSE       = " + str(self.loss_MSE(x, target)) + "\n")
 
     def update_backprop(self, x: np.array, target: np.array) -> None:
-        for i, xr in enumerate(x):
+        for x_row, target_row in zip(x, target):
             z = []
-            layer_in = xr
-            if len(layer_in.shape) == 1:
-                layer_in = np.array([layer_in])
-            for m in self._weights:
-                # print(np.c_[layer_in, np.ones(layer_in.shape[0])])
-                # print(m.T)
-                z_curr = np.matmul(np.c_[layer_in, np.ones(layer_in.shape[0])], m.T)
+            x_row = np.array([x_row])
+            a = [x_row]
+
+            for i, m in enumerate(self._weights):
+                z_curr = np.matmul(np.c_[x_row, np.ones(x_row.shape[0])], m)
                 z.append(z_curr)
-                layer_in = self.f_act(z_curr)
+                x_row = self.f_act(z_curr)
+                a.append(x_row)
+            zl = z.pop()
+            al = a.pop()
+            D = self.f_drv(zl) * (al - target_row)
 
-            bigd = self.f_drv(z[len(z)-1]) * 2 * (self.f_act(z[len(z)-1]) - target)
-            outi = self.f_act(z[len(z)-2])
-
-            # print(self._weights[len(self._weights)-1])
-            print("\nd: ")
-            print(bigd)
-            print(outi)
-            print(np.append(bigd, 1))
-            print(np.matmul(np.append(bigd, 1), outi))
-
+            WD = self.l_rate * np.matmul(np.c_[a[len(a)-1], np.ones(zl.shape[0])].T, D)
+            for i in reversed(range(len(z))):
+                zl = z.pop()
+                a.pop()
+                D = self.f_drv(zl) * np.matmul(D, self._weights[i+1].T[:,:-1])
+                self._weights[i+1] -= WD
+                WD = self.l_rate * np.matmul(np.c_[a[len(a)-1], np.ones(zl.shape[0])].T, D)
+            self._weights[0] -= WD
 
     def visualise_network(self,
                           layer_in: np.array,
