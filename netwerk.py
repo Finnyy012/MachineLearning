@@ -10,7 +10,8 @@ class Netwerk:
                  in_size: int,
                  out_size: int,
                  f_act: ActivatieFunctie,
-                 l_rate: float = .1) -> None:
+                 l_rate: float = .1,
+                 adaptive: float = 1) -> None:
         """
         initialiseert het netwerk met normaal-verdeelde, willekeurig-gegenereerde floats voor weights en biases.
 
@@ -19,12 +20,15 @@ class Netwerk:
         :param in_size: (int) input layer lengte
         :param out_size: (int) output layer lengte
         :param f_act: (ActivatieFuncties) activatiefunctie
+        :param l_rate: (float) learning rate - default = .1,
+        :param adaptive: (float) factor voor learning rate - default = 1
         """
         self.f_act = f_act.function
         self.f_drv = f_act.derivative
         self.f_str = f_act.toChar()
         self.l_rate = l_rate
         self._weights = []
+        self.adaptive = adaptive
 
         if n_layers == 0:
             self._weights.append(np.random.normal(size=(in_size+1, out_size)))
@@ -95,12 +99,24 @@ class Netwerk:
                 print("MSE       = " + str(self.loss_MSE(x, target)) + "\n")
 
     def update_backprop(self, x: np.array, target: np.array) -> None:
+        """
+        updatetet het netwerk dmv backpropagatie
+
+        berekend eerst de error (𝛿) van de laatste laag: 𝛿 = f'(zl) * C'
+        en loopt vervolgens het netwerk van links naar rechts af door voor elke weight matrix W:
+         1 - de gradient vast te stellen       -- ∇W = al • 𝛿
+         2 - de volgende error vast te stellen -- 𝛿  = f'(zl) * (W • 𝛿)
+         3 - de huidige weights te updateten   -- W  = W - η *∇W
+        na elke epoch wordt η verlaagd door het te vermenigvuldigen met adaptive
+
+        :param x: matrix met input values
+        :param target: matrix met target values
+        """
         for x_row, target_row in zip(x, target):
             z = []
             x_row = np.array([x_row])
             a = [x_row]
-
-            for i, m in enumerate(self._weights):
+            for m in self._weights:
                 z_curr = np.matmul(np.c_[x_row, np.ones(x_row.shape[0])], m)
                 z.append(z_curr)
                 x_row = self.f_act(z_curr)
@@ -108,22 +124,19 @@ class Netwerk:
             zl = z.pop()
             al = a.pop()
             D = self.f_drv(zl) * (al - target_row)
-
-            WD = self.l_rate * np.matmul(np.c_[a[len(a)-1], np.ones(zl.shape[0])].T, D)
+            WD = self.l_rate * np.matmul(np.c_[a[-1], np.ones(zl.shape[0])].T, D)
             for i in reversed(range(len(z))):
                 zl = z.pop()
-                a.pop()
                 D = self.f_drv(zl) * np.matmul(D, self._weights[i+1].T[:,:-1])
                 self._weights[i+1] -= WD
-                WD = self.l_rate * np.matmul(np.c_[a[len(a)-1], np.ones(zl.shape[0])].T, D)
+                WD = self.l_rate * np.matmul(np.c_[a[i], np.ones(zl.shape[0])].T, D)
             self._weights[0] -= WD
+        self.l_rate *= self.adaptive
 
     def visualise_network(self,
-                          layer_in: np.array,
                           out_labels: [str] = None,
-                          evaluate: bool = False,
-                          mindiam: float = .8,
-                          minlen: float = 2,
+                          mindiam: float = 1,
+                          minlen: float = 4,
                           titel: str = "",
                           filename: str = "netwerk") -> graphviz.Digraph:
         """
@@ -147,54 +160,41 @@ class Netwerk:
                                            'ordering' : 'in',
                                            'label'    : titel})
         res.format = 'bmp'
-        node_kwargs = {'shape'   : 'circle',
-                       'fontname': 'Consolas',
-                       'width'   : str(mindiam)}
-
-        if evaluate:
-            result = self.evaluate(layer_in)
-        else:
-            result = [[" " for _ in range(self._weights[len(self._weights) - 1].T.shape[0])]]
-
-        layer_in = np.append(layer_in, 1)
-        buffer = layer_in.shape[0]
+        node_kwargs = {'shape'    : 'circle',
+                       'fontname' : 'Consolas',
+                       'width'    : str(mindiam)}
         node_id = 0
+        buffer = 0
 
-        for i, n in enumerate(layer_in):
-            res.node(str(node_id), str(n), **node_kwargs)
-            for j in range(self._weights[0].T.shape[0]):
-                res.edge(str(node_id),
-                         str(buffer + j),
-                         taillabel=" " + str(self._weights[0].T[j][i]),
-                         minlen=str(minlen))
-            node_id += 1
-
-        for i, m in enumerate(self._weights):
-            buffer += (m.T.shape[0] + 1)
-            for j, node in enumerate(m.T):
-                res.node(str(node_id), self.f_str, **node_kwargs)
-                if i < len(self._weights) - 1:
-                    for k in range(self._weights[i + 1].T.shape[0]):
-                        res.edge(str(node_id),
-                                 str(buffer + k),
-                                 taillabel=" " + str(self._weights[i + 1].T[k][j]),
-                                 minlen=str(minlen))
+        for i, weights in enumerate(self._weights):
+            buffer += len(weights)
+            for j, neuron in enumerate(weights):
+                if j == len(weights)-1:
+                    lbl = "1"
+                elif i == 0:
+                    lbl = "x" + str(node_id)
                 else:
-                    res.node(str(-j - 1), str(result[0][j]), shape='none')
-                    if out_labels is not None:
-                        label = out_labels.pop()
-                    else:
-                        label = 'output'
-                    res.edge(str(node_id), str(-j - 1), label=label)
-                node_id += 1
-            if i < len(self._weights) - 1:
-                res.node(str(node_id), '1', **node_kwargs)
-                for k in range(len(self._weights[i + 1].T)):
+                    lbl = self.f_str + "(zˡ)"
+                res.node(str(node_id), lbl, **node_kwargs)
+                for k, weight in enumerate(neuron):
                     res.edge(str(node_id),
                              str(buffer + k),
-                             taillabel=" " + str(self._weights[i + 1].T[k][buffer-4]),
-                             minlen=str(minlen))
+                             taillabel     = str(round(weight,3)),
+                             minlen        = str(minlen),
+                             labelfontname = "Consolas",
+                             labelangle    = "0",
+                             labeldistance = "2")
                 node_id += 1
 
-        return res
+        buffer += len(self._weights[-1].T)
+        for i in range(len(self._weights[-1].T)):
+            res.node(str(buffer+i), " ", shape='none')
+            res.node(str(node_id), self.f_str + "(zˡ)", **node_kwargs)
+            if out_labels is not None and len(out_labels)!=0:
+                lbl = out_labels.pop()
+            else:
+                lbl = 'output'
+            res.edge(str(node_id), str(buffer+i), label=lbl, labelfontname="Consolas")
+            node_id += 1
 
+        return res
