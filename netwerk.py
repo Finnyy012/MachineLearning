@@ -65,21 +65,31 @@ class Netwerk:
         :param layer_in: (np.array) array met input (dus layer 0)
         :return: (np.array) array met output
         """
+
+        # de input moet de vorm hebben van een matrix
         if len(layer_in.shape) == 1:
             layer_in = np.array([layer_in])
 
+        # zie (2) in notebook
         for m in self._weights:
             layer_in = self.f_act(np.matmul(np.c_[layer_in, np.ones(layer_in.shape[0])], m))
         return layer_in
 
     def loss_MSE(self, x: np.array, target: np.array):
+        """
+        berekent de MSE van elke output neuron voor gegeven input en target.
+
+        :param x: (np.array) input matrix
+        :param target: (np.array) target matrix
+        :return:
+        """
         if len(target.shape) == 1:
             target = np.array([target])
         return np.mean((target - self.evaluate(x))**2, axis=0)
 
     def update_trivial(self, x: np.array, target: np.array, do_print=False) -> None:
         """
-        functie die een netwerk met maar één laag updated
+        functie die een netwerk met maar één laag updatetet
 
         de functie loopt door de features heen en updated de weights door er
          η • (target[i] – evaluate(x[i])) ⊗ (x[i]|1)
@@ -90,8 +100,8 @@ class Netwerk:
         :param do_print: print weights etc. tussen elke stap wanneer True
         """
         for i, row in enumerate(x):
+            # zie (5) in notebook
             d = self.l_rate*(target[i] - self.evaluate(row))
-
             self._weights[0] = self._weights[0] + np.outer(np.append(row, 1), d)
             if do_print:
                 print("Δ ⊗ in    = \n" + str(np.outer(d, np.append(row, 1))))
@@ -102,12 +112,13 @@ class Netwerk:
         """
         updatetet het netwerk dmv backpropagatie
 
-        berekend eerst de error (𝛿) van de laatste laag: 𝛿 = f'(zl) * C'
+        berekend eerst de error (𝛿) van de laatste laag: 𝛿 = f'(zl) * C' -- (8) in notebook
         en loopt vervolgens het netwerk van links naar rechts af door voor elke weight matrix W:
-         1 - de gradient vast te stellen       -- ∇W = al • 𝛿
-         2 - de volgende error vast te stellen -- 𝛿  = f'(zl) * (W • 𝛿)
-         3 - de huidige weights te updateten   -- W  = W - η *∇W
-        na elke epoch wordt η verlaagd door het te vermenigvuldigen met adaptive
+         1 - de gradient vast te stellen       -- ∇W = al • 𝛿 (13)
+         2 - de volgende error vast te stellen -- 𝛿  = f'(zl) * (W • 𝛿) (9)
+         3 - de huidige weights te updateten   -- W  = W - η *∇W (14)
+
+        na elke epoch wordt η verlaagd door het te vermenigvuldigen met `adaptive`
 
         :param x: matrix met input values
         :param target: matrix met target values
@@ -128,6 +139,7 @@ class Netwerk:
             for i in reversed(range(len(z))):
                 zl = z.pop()
                 D = self.f_drv(zl) * np.matmul(D, self._weights[i+1].T[:,:-1])
+                # de biases hebben we niet nodig hier, vandaar de [:,:-1]
                 self._weights[i+1] -= WD
                 WD = self.l_rate * np.matmul(np.c_[a[i], np.ones(zl.shape[0])].T, D)
             self._weights[0] -= WD
@@ -140,7 +152,7 @@ class Netwerk:
                           titel: str = "",
                           filename: str = "netwerk") -> graphviz.Digraph:
         """
-        visualiseert het netwerk
+        maakt een dot object om het netwerk af te beelden.
 
         :param layer_in: (np.array) array met input; als evaluate = False kunnen hier de labels van de input-variabelen in
         :param out_labels: ([str]) list met labels voor de output; None voor geen label - default = None

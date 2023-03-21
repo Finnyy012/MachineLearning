@@ -295,7 +295,7 @@ def bp_iris():
     # g1 = netw.visualise_network(mindiam=2.5, minlen=10)
     # g1.render(directory='graphviz_renders', view=True)
 
-    for i in range(1000):
+    for i in range(1):
         netw.update_backprop(X, target)
         print(netw.loss_MSE(X, target))
 
@@ -328,6 +328,7 @@ def test():
 
 
 if __name__ == '__main__':
+
     # demo1()
     # demo2()
     # bp_and()
