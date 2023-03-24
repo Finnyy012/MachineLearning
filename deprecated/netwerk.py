@@ -1,4 +1,7 @@
-from activatie_functies import ActivatieFunctie
+import math
+
+from functies import activatie_functies
+from functies.activatie_functies import ActivatieFunctie
 import numpy as np
 import graphviz
 
@@ -30,12 +33,18 @@ class Netwerk:
         self._weights = []
         self.adaptive = adaptive
 
+        std = 1
+        if type(f_act) == activatie_functies.RELU or type(f_act) == activatie_functies.LRELU:
+            std = math.sqrt(2/in_size)
+
         if n_layers == 0:
-            self._weights.append(np.random.normal(size=(in_size+1, out_size)))
+            self._weights.append(np.random.normal(loc=0.0, scale=std, size=(in_size+1, out_size)))
         else:
-            self._weights.append(np.random.normal(size=(in_size+1, layer_size)))
-            self._weights.extend([np.random.normal(size=(layer_size+1, layer_size)) for _ in range(n_layers - 1)])
-            self._weights.append(np.random.normal(size=(layer_size+1, out_size)))
+            self._weights.append(np.random.normal(loc=0.0, scale=std, size=(in_size+1, layer_size)))
+            if type(f_act) == activatie_functies.RELU or type(f_act) == activatie_functies.LRELU:
+                std = math.sqrt(2 / layer_size)
+            self._weights.extend([np.random.normal(loc=0.0, scale=std, size=(layer_size+1, layer_size)) for _ in range(n_layers - 1)])
+            self._weights.append(np.random.normal(loc=0.0, scale=std, size=(layer_size+1, out_size)))
 
     def evaluate(self, layer_in: np.array) -> np.array:
         """
@@ -75,13 +84,13 @@ class Netwerk:
             layer_in = self.f_act(np.matmul(np.c_[layer_in, np.ones(layer_in.shape[0])], m))
         return layer_in
 
-    def loss_MSE(self, x: np.array, target: np.array):
+    def loss_MSE(self, x: np.array, target: np.array) -> np.array:
         """
         berekent de MSE van elke output neuron voor gegeven input en target.
 
         :param x: (np.array) input matrix
         :param target: (np.array) target matrix
-        :return:
+        :return: (np.array) array met MSE per output node
         """
         if len(target.shape) == 1:
             target = np.array([target])

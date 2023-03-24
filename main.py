@@ -1,15 +1,11 @@
-import itertools
-import math
 from datetime import datetime
-from typing import Callable
 import numpy as np
-import graphviz
-
-import activatie_functies
-from netwerk import Netwerk
-from activatie_functies import ActivatieFunctie
+import layer
+from functies import activatie_functies, initialisers
+from deprecated.netwerk import Netwerk
 from sklearn.datasets import load_iris, load_digits
-import pandas as pd
+from scipy import signal
+from netwerk2 import Netwerk2
 
 
 def demo1():
@@ -195,7 +191,8 @@ def main():
 
 
 def bp_digit():
-    netw = Netwerk(2, 15, 64, 10, activatie_functies.SIGMOID(), 0.1)
+    np.random.seed(1)
+    netw = Netwerk(2, 50, 64, 10, activatie_functies.LRELU, l_rate=0.0001, adaptive=0.99999)
 
     digits = load_digits()
     data = np.array(digits['data'])
@@ -221,13 +218,18 @@ def bp_digit():
     print(digits['target'])
     # print(netw.evaluate(data))
 
-    for i in range(30):
+    acc = (digits['target'][:-360] == list(map(np.argmax, netw.evaluate(data_train)))).astype(int).mean()
+    print("\naccuracy initial: " + str(acc))
+
+    for i in range(1000):
         netw.update_backprop(data_train, target_train)
         acc = (digits['target'][:-360] == list(map(np.argmax, netw.evaluate(data_train)))).astype(int).mean()
         print("\naccuracy epoch " + str(i) + ": " + str(acc))
+        acc = (digits['target'][-360:] == list(map(np.argmax, netw.evaluate(data_test)))).astype(int).mean()
+        print("\naccuracy test set: " + str(acc))
 
-    acc = (digits['target'][-360:] == list(map(np.argmax, netw.evaluate(data_test)))).astype(int).mean()
-    print("\naccuracy test set: " + str(acc))
+    # acc = (digits['target'][-360:] == list(map(np.argmax, netw.evaluate(data_test)))).astype(int).mean()
+    # print("\naccuracy test set: " + str(acc))
 
     # g1 = netw.visualise_network(mindiam=2.5, minlen=10)
     # print('done!')
@@ -258,7 +260,7 @@ def bp_mnist():
 
     # print(len(X_train[0]))
 
-    netw = Netwerk(1, 200, 784, 10, activatie_functies.SIGMOID(), l_rate=0.01, adaptive=0.9999)
+    netw = Netwerk(1, 50, 784, 10, activatie_functies.LRELU(), l_rate=0.0001, adaptive=0.99999)
     # 1, 10, 784, 10, activatie_functies.SIGMOID(), l_rate=0.01, adaptive=0.9999 : 0.552
     # 1, 10, 784, 10, activatie_functies.SIGMOID(), l_rate=0.01, adaptive=0.999  : 0.53325
     # 2, 10, 784, 10, activatie_functies.SIGMOID(), l_rate=0.01, adaptive=0.999  : 0.50325
@@ -273,6 +275,7 @@ def bp_mnist():
 
     acc = (target[-cutoff:] == list(map(np.argmax, netw.evaluate(X_test)))).astype(int).mean()
     print("\naccuracy test set: " + str(acc))
+
 
 def bp_iris():
     np.random.seed(6)
@@ -306,25 +309,49 @@ def bp_iris():
 
 
 def test():
-    # a = [1,2,3,4]
-    #
-    # print(a[-1:])
-    # print(a[:len(a)-1])
-    # #
-    # b = np.array([[1, 2, 3],
-    #      [2,6,4],
-    #      [3,4,5]])
-    #
-    # print(b[:, 1:])
-    # print(b[:, :1])
-    #
-    # c = np.array([1,1,1])
-    #
-    # print((c == list(map(np.argmax, b))).astype(int).mean())
+    a = np.array([[  0,  1,  1, -1],
+                 [ -1,  0,  1, -1],
+                 [  1,  0,  2,  0],
+                 [ -1,  1,0.1,  0],
+                 [  0, -1,0.6,0.810655]])
 
-    x = np.array([-710])
+    k = np.array([[[1,2,1],[2,1,3],[3,1,7]],
+                  [[1,1,2],[5,1,3],[6,5,9]],
+                  [[1,2,1],[2,3,3],[7,1,1]]])
 
-    print(1 / (1 + math.e ** (-x)))
+    print(k.sum(-1))
+    k[:, :, 1]+= np.array([[1,2,3],
+                           [1,1,1],
+                           [1,4,2]])
+    print(k[:,:,1])
+    # print(signal.convolve2d(a, k, 'same'))
+
+
+def test2():
+    np.random.seed(1)
+    netw = Netwerk2()
+    netw.layers.append(layer.DenseLayer(2, 3, activatie_functies.SIGMOID, initialisers.Glorot, 1))
+    netw.layers.append(layer.DenseLayer(3, 2, activatie_functies.SIGMOID, initialisers.Glorot, 1))
+
+    I = np.array([[0, 0],
+                  [0, 1],
+                  [1, 0],
+                  [1, 1]])
+
+    t = np.array([[0, 0],
+                  [0, 1],
+                  [0, 1],
+                  [1, 0]])
+
+    # for _ in range(1000):
+    #     for x, target in zip(I,t):
+    #         netw.feed_backward(x, target)
+
+    netw.learn(1000, I, t, True)
+
+    print(netw.feed_forward(I).round(3))
+
+
 
 
 if __name__ == '__main__':
@@ -336,6 +363,6 @@ if __name__ == '__main__':
     # bp_digit()
     # bp_mnist()
     # main()
-    bp_iris()
-    # test()
+    # bp_iris()
+    test()
 

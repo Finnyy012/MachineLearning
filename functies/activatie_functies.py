@@ -1,5 +1,5 @@
 import math
-from abc import abstractmethod, ABC
+from abc import ABC
 import numpy as np
 
 
@@ -40,6 +40,35 @@ class STEP(ActivatieFunctie):
     @staticmethod
     def toChar() -> chr:
         return 'H'
+
+
+class RELU(ActivatieFunctie):
+    @staticmethod
+    def function(x: np.array) -> np.array:
+        return x * (x > 0)
+
+    @staticmethod
+    def derivative(x: np.array) -> np.array:
+        return 1 * (x > 0)
+
+    @staticmethod
+    def toChar() -> chr:
+        return 'R'
+
+
+class LRELU(ActivatieFunctie):
+    @staticmethod
+    def function(x: np.array) -> np.array:
+        return np.where(x > 0, x, x * 0.01)
+
+    @staticmethod
+    def derivative(x: np.array) -> np.array:
+        return np.where(x > 0, 1, 0.01)
+
+    @staticmethod
+    def toChar() -> chr:
+        return 'LR'
+
 
 #
 #
