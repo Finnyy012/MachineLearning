@@ -55,30 +55,50 @@ class ConvLayer(Layer):
                  in_shape: (int, int, int),
                  kernels: int,
                  kernel_size: int,
-                 mode: str = "valid",
                  f_act: activatie_functies.ActivatieFunctie = activatie_functies.RELU,
                  f_init: initialisers.Initialiser = initialisers.Glorot,
                  l_rate: float = 0.01,
                  flatten: bool = False):
         super().__init__(f_act, l_rate)
-        self._kernels = [[f_init.generate(kernel_size, kernel_size) for _ in range(in_shape[-1])] for _ in range(kernels)]
+        self._kernels = [np.array([f_init.generate(kernel_size, kernel_size) for _ in range(in_shape[-1])])
+                         for _ in range(kernels)]
         self.in_shape = in_shape
         self.kernel_size = kernel_size
-        self.mode = mode
+        self.flatten = flatten
+
+    @staticmethod
+    def conv3d(m_in, kernel, mode='valid'):
+        z = np.zeros(shape=(m_in.shape[0]-(kernel.shape[0]-1), m_in.shape[1]-(kernel.shape[1]-1), m_in.shape[-1]))
+        for i in range(m_in.shape[-1]):
+            z[:, :, i] += signal.convolve2d(m_in[:, :, i], kernel[i], mode=mode)
+        return z.sum(-1)
 
     def feed_forward(self, m_in: np.array):
         self._a = m_in
-        self._z = []
-        maps = []
+        self._z = np.zeros(shape=(self.in_shape[0]-(self.kernel_size-1),
+                                  self.in_shape[1]-(self.kernel_size-1),
+                                  len(self._kernels)))
 
-        for kernel in self._kernels:
-            z = np.zeros(shape=(self.in_shape[0]-(self.kernel_size-1), self.in_shape[1]-(self.kernel_size-1), self.in_shape[-1]))
-            for i in range(self.in_shape[-1]):
-                z[:,:,i] += signal.convolve2d(m_in[:,:,i], kernel[i], mode=self.mode)
-            self._z.append(z)
-            maps.append(self.f_act(z.sum(-1)))
-        return maps
+        for i, kernel in enumerate(self._kernels):
+            z = self.conv3d(m_in, kernel, mode='valid')
+            self._z[:,:,i] += z
+
+        res = self.f_act(self._z)
+        if self.flatten:
+            res = np.array([res.flatten])
+        return res
 
     def feed_backward(self, dW: np.array):
+        if self.flatten:
+            dW = dW[0].reshape(shape=(self.in_shape[0]-(self.kernel_size-1),
+                                      self.in_shape[1]-(self.kernel_size-1),
+                                      len(self._kernels)))
+
+        dLC2 = np.zeros(self._z.shape, dtype=np.float64)
+
+
         self._error = self.f_drv(self._z) * dW
+        self.conv3d(self._error, np.rot90(np.rot90()), mode='full')
+
+
 

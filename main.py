@@ -320,6 +320,11 @@ def test():
                   [[1,2,1],[2,3,3],[7,1,1]]])
 
     print(k.sum(-1))
+
+    l = np.array([k.flatten()])
+    print(l)
+    print(l.reshape(3,3,3))
+
     k[:, :, 1]+= np.array([[1,2,3],
                            [1,1,1],
                            [1,4,2]])
@@ -364,5 +369,5 @@ if __name__ == '__main__':
     # bp_mnist()
     # main()
     # bp_iris()
-    test()
+    test2()
 
